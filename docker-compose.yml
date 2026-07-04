@@ -23,11 +23,15 @@ services:
       - 3000
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.financeiro-mcp.rule=Host(`${MCP_DOMAIN}`)"
+      # Mesmo domínio do Firefly, roteando só o path /mcp para este serviço.
+      # priority alta garante que /mcp seja capturado aqui antes do Firefly,
+      # que atende todo o resto do Host.
+      - "traefik.http.routers.financeiro-mcp.rule=Host(`${FIREFLY_DOMAIN}`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.financeiro-mcp.priority=100"
       - "traefik.http.routers.financeiro-mcp.entrypoints=websecure"
       - "traefik.http.routers.financeiro-mcp.tls.certResolver=letsencrypt"
       - "traefik.http.services.financeiro-mcp.loadbalancer.server.port=3000"
-      # --- Basic Auth (protege o endpoint do MCP) ---
+      # --- Basic Auth (protege APENAS o path /mcp, não afeta o Firefly) ---
       - "traefik.http.routers.financeiro-mcp.middlewares=financeiro-mcp-auth"
       # Credencial: usuário 'admin'. Hash gerado com openssl passwd -apr1.
       # No docker-compose o '$' do hash precisa ser escapado como '$$'.
