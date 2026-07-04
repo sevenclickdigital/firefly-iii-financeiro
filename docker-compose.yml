@@ -1,0 +1,38 @@
+version: "3"
+
+# Servidor MCP para o Firefly customizado.
+# O Firefly em si roda como serviço "application" separado no Dokploy (buildado
+# a partir do Dockerfile na raiz deste fork). Este compose sobe apenas o MCP,
+# que conversa com o Firefly pela URL pública e é consumido pelo ChatGPT/Claude.
+services:
+  firefly-mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    restart: always
+    # O servidor MCP EXIGE PAT + Base URL no boot (não sobe sem eles).
+    # O domínio é protegido com Basic Auth (labels abaixo).
+    environment:
+      FIREFLY_III_BASE_URL: ${FIREFLY_URL}
+      FIREFLY_III_PAT: ${FIREFLY_PAT}
+      FIREFLY_III_PRESET: default
+      PORT: 3000
+    networks:
+      - dokploy-network
+    ports:
+      - 3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.financeiro-mcp.rule=Host(`${MCP_DOMAIN}`)"
+      - "traefik.http.routers.financeiro-mcp.entrypoints=websecure"
+      - "traefik.http.routers.financeiro-mcp.tls.certResolver=letsencrypt"
+      - "traefik.http.services.financeiro-mcp.loadbalancer.server.port=3000"
+      # --- Basic Auth (protege o endpoint do MCP) ---
+      - "traefik.http.routers.financeiro-mcp.middlewares=financeiro-mcp-auth"
+      # Credencial: usuário 'admin'. Hash gerado com openssl passwd -apr1.
+      # No docker-compose o '$' do hash precisa ser escapado como '$$'.
+      - "traefik.http.middlewares.financeiro-mcp-auth.basicauth.users=admin:$$apr1$$Rv1bOv6d$$gGDE9fE/TekZGU4tqXUjI."
+
+networks:
+  dokploy-network:
+    external: true
