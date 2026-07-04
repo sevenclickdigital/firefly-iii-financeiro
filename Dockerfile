@@ -28,6 +28,17 @@ WORKDIR /var/www/html
 USER root
 RUN set -eux; \
     install-php-extensions bcmath intl gd pdo_mysql
+
+# Gera o locale pt_BR.UTF-8. Sem ele o Firefly não formata valores monetários
+# nem datas no padrão brasileiro (R$ 1.234,56). Debian slim não traz locale-gen,
+# então instalamos o pacote 'locales' e geramos o locale manualmente.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends locales; \
+    sed -i 's/^# *\(pt_BR.UTF-8\)/\1/' /etc/locale.gen; \
+    echo 'pt_BR.UTF-8 UTF-8' >> /etc/locale.gen; \
+    locale-gen; \
+    rm -rf /var/lib/apt/lists/*
 USER www-data
 
 # Copia o código-fonte da aplicação (respeitando o dono www-data).
