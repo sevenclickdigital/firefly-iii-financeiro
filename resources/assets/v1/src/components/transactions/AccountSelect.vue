@@ -55,11 +55,16 @@
           v-on:input="selectedItem"
       >
         <template slot="item" slot-scope="props">
-          <li v-for="(item, index) in props.items" :class="{active:props.activeIndex===index}">
-            <a role="button" @click="props.select(item)">
-              <span v-html="betterHighlight(item)"></span>
-            </a>
-          </li>
+          <template v-for="group in groupItems(props.items)">
+            <li v-if="group.items.length > 0" class="dropdown-header" :key="group.key">
+              {{ group.label }}
+            </li>
+            <li v-for="entry in group.items" :key="'item-' + entry.index" :class="{active:props.activeIndex===entry.index}">
+              <a role="button" @click="props.select(entry.item)">
+                <span v-html="betterHighlight(entry.item)"></span>
+              </a>
+            </li>
+          </template>
         </template>
       </typeahead>
       <ul v-for="error in this.error" class="list-unstyled">
@@ -144,6 +149,28 @@ export default {
               .catch(err => {
                 // any error handler
               })
+        },
+        groupItems: function (items) {
+          // Tipos de conta considerados "ativo" e "passivo/cartão".
+          const liabilityTypes = ['Credit card', 'Debt', 'Loan', 'Mortgage', 'Liability credit account'];
+
+          let assetGroup = {key: 'asset', label: 'Contas de ativo', items: []};
+          let liabilityGroup = {key: 'liability', label: 'Passivo / Cartões', items: []};
+          let otherGroup = {key: 'other', label: 'Outras contas', items: []};
+
+          (items || []).forEach((item, index) => {
+            let entry = {item: item, index: index};
+            let type = item.type;
+            if ('Asset account' === type) {
+              assetGroup.items.push(entry);
+            } else if (-1 !== liabilityTypes.indexOf(type)) {
+              liabilityGroup.items.push(entry);
+            } else {
+              otherGroup.items.push(entry);
+            }
+          });
+
+          return [assetGroup, liabilityGroup, otherGroup];
         },
         betterHighlight: function (item) {
           var inputValue = this.$refs.input.value.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');

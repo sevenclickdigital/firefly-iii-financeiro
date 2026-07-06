@@ -125,13 +125,24 @@ final class AccountController extends Controller
             ];
         }
 
-        // custom order.
+        // custom order: ativos primeiro, depois passivos/cartões, depois o restante.
         usort($return, static function (array $left, array $right): int {
-            $order = [AccountTypeEnum::ASSET->value, AccountTypeEnum::REVENUE->value, AccountTypeEnum::EXPENSE->value];
-            $posA  = (int) array_search($left['type'], $order, true);
-            $posB  = (int) array_search($right['type'], $order, true);
+            $order = [
+                AccountTypeEnum::ASSET->value,
+                AccountTypeEnum::CREDITCARD->value,
+                AccountTypeEnum::DEBT->value,
+                AccountTypeEnum::LOAN->value,
+                AccountTypeEnum::MORTGAGE->value,
+                AccountTypeEnum::LIABILITY_CREDIT->value,
+                AccountTypeEnum::REVENUE->value,
+                AccountTypeEnum::EXPENSE->value,
+            ];
+            $posA  = array_search($left['type'], $order, true);
+            $posB  = array_search($right['type'], $order, true);
+            $posA  = false === $posA ? PHP_INT_MAX : $posA;
+            $posB  = false === $posB ? PHP_INT_MAX : $posB;
 
-            return $posA - $posB;
+            return $posA <=> $posB;
         });
 
         return response()->api($return);
